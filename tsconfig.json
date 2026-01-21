@@ -1,7 +1,20 @@
 {
-"compilerOptions": {
-"sourceMap": false,
-"declaration": false
-},
-"exclude": ["node_modules", "src/**/*.spec.ts"]
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+
+    "rootDir": "src",
+    "outDir": "dist",
+
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+
+    "sourceMap": true,
+    "typeRoots": ["./node_modules/@types", "./src/types"]
+  },
+  "include": ["src/**/*", "src/types/**/*.d.ts"], 
+  "exclude": ["node_modules", "dist"]
 }

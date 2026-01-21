@@ -1,14 +1,16 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from 'express';
 
-export function requireRoles(...roles: string[]) {
+export const requireRoles = (...roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    const user = req.currentUser;
-    if (!user) return res.status(401).json({ error: "Unauthorized" });
+    if (!req.currentUser) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
 
-    const has = user.roles?.some((r) => roles.includes(r));
-    if (!has)
-      return res.status(403).json({ error: "Forbidden: insufficient role" });
+    const hasRole = roles.some(role => req.currentUser!.roles.includes(role));
+    if (!hasRole) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
 
     next();
   };
-}
+};

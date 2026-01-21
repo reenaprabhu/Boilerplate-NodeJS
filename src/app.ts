@@ -1,51 +1,39 @@
-import express from 'express';
-import 'express-async-errors';
+/// <reference path="./types/express.d.ts" />
+import express, { Request, Response, NextFunction } from 'express';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger';
+import userRoutes from './routes/user.route';
+import authRoutes from './routes/auth.route';
+import projectRoutes from './routes/project.route';
+import roleRoutes from './routes/role.route';
+import userRoleRoutes from './routes/user-role.route';
+import healthRoutes from './routes/health.route';
+import { verifyToken } from './utils/jwt';
 
-import healthRoute from './routes/health.route';
-import authRoute from './routes/auth.route';
-import userRoute from './routes/user.route';
-import projectRoute from './routes/project.route';
-import { authMiddleware } from './middleware/auth.middleware';
+const app = express();
+app.use(express.json());
 
-const repoApp = () => {
-  const app = express();
+// Swagger UI
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-  app.use(express.json());
-
-  // Simple request logger (dev)
-  app.use((req, _res, next) => {
-    console.log(`${req.method} ${req.path}`);
-    next();
-  });
-
-  // Parse user from JWT (sets req.currentUser)
-  app.use(authMiddleware);
-
-  // Public routes
-  app.use('/health', healthRoute);
-  app.use('/auth', authRoute);
-
-  // Protected routes (RBAC applied inside route handlers)
-  app.use('/users', userRoute);
-  app.use('/projects', projectRoute);
-
-  // 404
-  app.use((req, res) => {
-    res.status(404).json({ error: 'Not Found' });
-  });
-
-  // Error handler
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  app.use(
-    (err: any, _req: express.Request, res: express.Response, _next: any) => {
-      console.error(err);
-      const status = err.status || 500;
-      const message = err.message || 'Internal Server Error';
-      res.status(status).json({ error: message });
+// Global middleware to set currentUser
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const token = req.headers['authorization'];
+  if (typeof token === 'string') {
+    const payload = verifyToken(token.replace('Bearer ', ''));
+    if (payload) {
+      req.currentUser = payload;
     }
-  );
+  }
+  next();
+});
 
-  return app;
-};
+// Routes
+app.use('/auth', authRoutes);
+app.use('/user', userRoutes);
+app.use('/user', userRoleRoutes); // User role management routes
+app.use('/project', projectRoutes);
+app.use('/role', roleRoutes);
+app.use('/health', healthRoutes);
 
-export default repoApp;
+export default () => app;

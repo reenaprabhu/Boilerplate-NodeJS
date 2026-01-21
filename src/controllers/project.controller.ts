@@ -1,11 +1,19 @@
 import { Request, Response } from "express";
 import { ProjectService } from "../services/project.service";
+import { PaginationOptions } from "../types/pagination";
 
 export class ProjectController {
   constructor(private readonly service: ProjectService) {}
 
-  getAll = async (_req: Request, res: Response) => {
-    const projects = await this.service.getAll();
+  getAll = async (req: Request, res: Response) => {
+    // Support pagination via query parameters
+    const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+
+    const options: PaginationOptions | undefined = 
+      page && limit ? { page, limit } : undefined;
+
+    const projects = await this.service.getAll(options);
     res.json(projects);
   };
 
@@ -16,7 +24,14 @@ export class ProjectController {
   };
 
   getByOwner = async (req: Request, res: Response) => {
-    const projects = await this.service.getByOwner(req.params.ownerId);
+    // Support pagination for owner queries
+    const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+
+    const options: PaginationOptions | undefined = 
+      page && limit ? { page, limit } : undefined;
+
+    const projects = await this.service.getByOwner(req.params.ownerId, options);
     res.json(projects);
   };
 

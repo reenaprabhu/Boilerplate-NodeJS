@@ -11,6 +11,7 @@ export interface CreateUserDTO {
 name: string;
 email: string;
 password: string;
+roles?: string[]; // Optional array of role names
 }
 
 

@@ -14,10 +14,13 @@ export function authMiddleware(
 
   try {
     const payload = verifyToken(token);
-    req.currentUser = {
-      id: payload.id,
-      roles: payload.roles,
-    };
+    if (payload) {
+      req.currentUser = {
+        id: payload.id,
+        roles: payload.roles,
+        email: payload.email
+      };
+    }
   } catch (_) {
     // invalid token ignored
   }

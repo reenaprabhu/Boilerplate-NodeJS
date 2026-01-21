@@ -1,9 +1,10 @@
 import bcrypt from "bcryptjs";
 import { UserRepository } from "../repositories/user.repository";
+import { UserRepositoryDB } from "../repositories/user.repository.db";
 import { signToken } from "../utils/jwt";
 
 export class AuthService {
-  constructor(private readonly userRepo: UserRepository) {}
+  constructor(private readonly userRepo: UserRepository | UserRepositoryDB) {}
 
   async login(email: string, password: string) {
     const user = await this.userRepo.findByEmail(email);

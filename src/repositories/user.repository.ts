@@ -19,12 +19,15 @@ export class UserRepository {
 
   async create(dto: CreateUserDTO): Promise<User> {
     const hashed = await bcrypt.hash(dto.password, 10);
+    // Use provided roles or default to 'user'
+    const roles = dto.roles && dto.roles.length > 0 ? dto.roles : ["user"];
+    
     const newUser: User = {
       id: randomUUID(),
       name: dto.name,
       email: dto.email,
       passwordHash: hashed,
-      roles: ["user"],
+      roles: roles,
     };
 
     this.users.push(newUser);

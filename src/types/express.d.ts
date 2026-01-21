@@ -1,8 +1,12 @@
-import { Request } from 'express';
+/// <reference types="express" />
+import type { AuthTokenPayload } from "../utils/jwt";
 
+declare global {
+  namespace Express {
+    interface Request {
+      currentUser?: AuthTokenPayload;
+    }
+  }
+}
 
-declare module 'express' {
-export interface Request {
-currentUser?: { id: string; roles?: string[] };
-}
-}
+export {};

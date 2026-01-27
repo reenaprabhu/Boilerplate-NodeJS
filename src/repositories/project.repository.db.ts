@@ -20,7 +20,7 @@ export class ProjectRepositoryDB {
       if (cached) return cached;
 
       const dbProjects = await ProjectModel.findAll({
-        order: [['createdAt', 'DESC']],
+        order: [['created_at', 'DESC']],
       });
 
       const projects: Project[] = dbProjects.map(p => ({
@@ -43,7 +43,7 @@ export class ProjectRepositoryDB {
     if (cached) return cached;
 
     const { rows: dbProjects, count: total } = await ProjectModel.findAndCountAll({
-      order: [['createdAt', 'DESC']],
+      order: [['created_at', 'DESC']],
       limit,
       offset,
     });
@@ -94,7 +94,7 @@ export class ProjectRepositoryDB {
       // Uses index on owner_id for fast lookup
       const dbProjects = await ProjectModel.findAll({
         where: { ownerId: userId },
-        order: [['createdAt', 'DESC']],
+        order: [['created_at', 'DESC']],
       });
 
       const projects: Project[] = dbProjects.map(p => ({
@@ -118,7 +118,7 @@ export class ProjectRepositoryDB {
 
     const { rows: dbProjects, count: total } = await ProjectModel.findAndCountAll({
       where: { ownerId: userId },
-      order: [['createdAt', 'DESC']],
+      order: [['created_at', 'DESC']],
       limit,
       offset,
     });

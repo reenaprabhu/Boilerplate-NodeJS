@@ -24,8 +24,34 @@ export class UserController {
   };
 
   create = async (req: Request, res: Response) => {
-    const user = await this.service.create(req.body);
-    res.status(201).json(user);
+    try {
+      const user = await this.service.create(req.body);
+      res.status(201).json(user);
+    } catch (error: any) {
+      // Handle duplicate email error
+      if (error.name === 'SequelizeUniqueConstraintError') {
+        const message = error.errors?.[0]?.message || 
+                       (error.message?.includes('email') ? 'Email already exists' : 'Duplicate entry');
+        return res.status(409).json({ 
+          error: message,
+          message: message 
+        });
+      }
+      // Handle validation errors
+      if (error.name === 'SequelizeValidationError') {
+        const message = error.errors?.[0]?.message || 'Validation error';
+        return res.status(400).json({ 
+          error: message,
+          message: message 
+        });
+      }
+      // Handle other errors
+      console.error('User creation error:', error);
+      res.status(500).json({ 
+        error: error.message || 'Failed to create user',
+        message: error.message || 'Failed to create user'
+      });
+    }
   };
 
   update = async (req: Request, res: Response) => {

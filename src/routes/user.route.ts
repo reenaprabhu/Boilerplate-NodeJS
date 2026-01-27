@@ -1,63 +1,176 @@
-/*import { Router } from "express";
-import { UserController } from "../controllers/user.controller";
-import { UserService } from "../services/user.service";
-import { UserRepository } from "../repositories/user.repository";
+import { Router } from "express";
 import { requireRoles } from "../middleware/rbac";
-
-const repo = new UserRepository();
-const service = new UserService(repo);
-const controller = new UserController(service);
-
-const router = Router();
-
-router.get("/", requireRoles(["admin", "manager"]), controller.getAll);
-router.get("/:id", controller.getById);
-router.post("/", requireRoles(["admin", "manager"]), controller.create);
-router.put("/:id", requireRoles(["admin", "manager"]), controller.update);
-router.delete("/:id", requireRoles(["admin", "manager"]), controller.delete);
-
-export default router;*/
-
-import { Router } from 'express';
-import { requireRoles } from '../middleware/rbac';
+import { requireAuth } from "../middleware/requireAuth";
+import { userController } from "../config/dependencies";
 
 const router = Router();
 
 /**
  * @swagger
- * /user/admin:
+ * /user:
  *   get:
- *     summary: Admin-only endpoint
+ *     summary: Get all users (Admin or Manager)
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Page size for pagination
  *     responses:
  *       200:
- *         description: Success message for admin users
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Hello user@example.com, you are an admin!"
+ *         description: List of users (optionally paginated)
  *       401:
- *         description: Unauthorized - No token provided
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *         description: Unauthorized
  *       403:
- *         description: Forbidden - User does not have admin role
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
+ *         description: Forbidden - Admin or Manager role required
  */
-router.get('/admin', requireRoles('admin'), (req, res) => {
-  res.json({ message: `Hello ${req.currentUser?.email}, you are an admin!` });
-});
+router.get("/", requireRoles("admin", "manager"), userController.getAll);
+
+/**
+ * @swagger
+ * /user/{id}:
+ *   get:
+ *     summary: Get user by ID (Admin or Manager)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User details
+ *       404:
+ *         description: User not found
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin or Manager role required
+ */
+router.get("/:id", requireRoles("admin", "manager"), userController.getById);
+
+/**
+ * @swagger
+ * /user:
+ *   post:
+ *     summary: Create a new user (Admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 format: password
+ *               roles:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       201:
+ *         description: User created successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin role required
+ */
+router.post("/", requireRoles("admin", "manager"), userController.create);
+
+/**
+ * @swagger
+ * /user/{id}:
+ *   put:
+ *     summary: Update a user (Admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 format: password
+ *               roles:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: User updated successfully
+ *       404:
+ *         description: User not found
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin role required
+ */
+router.put("/:id", requireRoles("admin"), userController.update);
+
+/**
+ * @swagger
+ * /user/{id}:
+ *   delete:
+ *     summary: Delete a user (Admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User deleted successfully
+ *       404:
+ *         description: User not found
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin role required
+ */
+router.delete("/:id", requireRoles("admin"), userController.delete);
 
 export default router;
 

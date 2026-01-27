@@ -36,7 +36,25 @@ export class ProjectController {
   };
 
   create = async (req: Request, res: Response) => {
-    const project = await this.service.create(req.body);
+    // Automatically set ownerId from the authenticated user if available
+    const ownerId =
+      (req as any).currentUser?.id ||
+      (req.body && (req.body.ownerId as string));
+
+    if (!ownerId) {
+      return res.status(400).json({
+        error:
+          "Owner ID is required to create a project. Please ensure you are authenticated.",
+      });
+    }
+
+    const dto = {
+      name: req.body.name,
+      description: req.body.description,
+      ownerId,
+    };
+
+    const project = await this.service.create(dto);
     res.status(201).json(project);
   };
 

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireRoles } from "../middleware/rbac";
+import { requireAuth } from "../middleware/requireAuth";
 import { projectController } from "../config/dependencies";
 
 const router = Router();
@@ -26,7 +27,7 @@ const router = Router();
  *       403:
  *         description: Forbidden - Admin role required
  */
-router.get("/", requireRoles("admin"), projectController.getAll);
+router.get("/", requireAuth, projectController.getAll);
 
 /**
  * @swagger
@@ -55,7 +56,7 @@ router.get("/", requireRoles("admin"), projectController.getAll);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get("/:id", projectController.getById);
+router.get("/:id", requireAuth, projectController.getById);
 
 /**
  * @swagger
@@ -80,7 +81,7 @@ router.get("/:id", projectController.getById);
  *               items:
  *                 $ref: '#/components/schemas/Project'
  */
-router.get("/owner/:ownerId", projectController.getByOwner);
+router.get("/owner/:ownerId", requireAuth, projectController.getByOwner);
 
 /**
  * @swagger

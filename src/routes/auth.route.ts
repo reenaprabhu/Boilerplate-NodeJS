@@ -42,10 +42,12 @@ router.post("/login", async (req, res) => {
     return res.status(400).json({ error: "Email and password required" });
 
   try {
-    const { token } = await authService.login(email, password);
-    res.json({ token });
-  } catch {
-    res.status(401).json({ error: "Invalid credentials" });
+    const { token, user } = await authService.login(email, password);
+    res.json({ token, user });
+  } catch (error: any) {
+    // Return proper error message
+    const errorMessage = error?.message || "Invalid credentials";
+    res.status(401).json({ error: errorMessage });
   }
 });
 
@@ -192,9 +194,21 @@ router.post("/register", async (req: Request, res: Response) => {
 
   } catch (error: any) {
     console.error("❌ Registration error:", error);
+    
+    // Handle duplicate email error from Sequelize
+    if (error.name === 'SequelizeUniqueConstraintError' || 
+        error.name === 'SequelizeValidationError' ||
+        error.message?.includes('unique') ||
+        error.message?.includes('duplicate')) {
+      return res.status(409).json({
+        success: false,
+        error: "User with this email already exists"
+      });
+    }
+    
     return res.status(500).json({
       success: false,
-      error: "Failed to register user",
+      error: error.message || "Failed to register user",
       message: error?.message || "Unexpected error"
     });
   }

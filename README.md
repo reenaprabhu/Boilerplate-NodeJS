@@ -11,6 +11,7 @@ A high-performance Node.js application boilerplate designed for high read and me
 - [Configuration](#configuration)
 - [Database Setup](#database-setup)
 - [API Documentation](#api-documentation)
+- [Docker Deployment](#docker-deployment)
 - [Design Patterns](#design-patterns)
 - [Performance Optimizations](#performance-optimizations)
 - [Scaling Strategies](#scaling-strategies)
@@ -28,6 +29,7 @@ A high-performance Node.js application boilerplate designed for high read and me
 ✅ **Swagger Documentation** - Interactive API docs  
 ✅ **TypeScript** - Type-safe development  
 ✅ **Dependency Injection** - Flexible repository switching  
+✅ **Docker Support** - Complete Docker Compose setup with all services  
 
 ## Architecture
 
@@ -103,26 +105,91 @@ src/
 
 ## Installation
 
+### Option 1: Docker (Recommended)
+
+The easiest way to run the entire application stack is using Docker Compose.
+
+**Prerequisites:**
+- Docker Desktop installed and running
+- Verify Docker is running: `docker ps` (should not show errors)
+
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
    cd Boilerplate-NodeJS
    ```
 
-2. **Install dependencies**
+2. **Start Docker Desktop** (if not already running)
+   - Windows: Search for "Docker Desktop" in Start menu
+   - Mac: Open Docker Desktop from Applications
+   - Wait for Docker to fully start (check system tray/status bar)
+
+3. **Start all services with Docker Compose**
+   ```bash
+   # Production mode (builds and runs all services)
+   docker-compose up -d
+   
+   # View logs
+   docker-compose logs -f
+   
+   # Stop all services
+   docker-compose down
+   ```
+   
+   **Note:** First run will take longer as it builds images and downloads base images.
+
+3. **Access the application**
+   - Frontend: http://localhost:4200
+   - Backend API: http://localhost:3001
+   - API Documentation: http://localhost:3001/api-docs
+   - SQL Server: localhost:1433
+   - Redis: localhost:6379
+
+4. **Development with Docker (only infrastructure)**
+   ```bash
+   # Start only SQL Server and Redis for local development
+   docker-compose -f docker-compose.dev.yml up -d
+   
+   # Run backend and frontend locally
+   npm run dev  # Backend
+   cd frontend && npm start  # Frontend
+   ```
+
+**Docker Services:**
+- `backend`: Node.js API server (port 3001)
+- `frontend`: Angular application served via nginx (port 4200)
+- `sqlserver`: SQL Server 2022 database (port 1433)
+- `redis`: Redis cache server (port 6379)
+
+### Option 2: Local Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd Boilerplate-NodeJS
+   ```
+
+2. **Install backend dependencies**
    ```bash
    npm install
    ```
 
-3. **Set up environment variables**
+3. **Install frontend dependencies**
+   ```bash
+   cd frontend
+   npm install
+   cd ..
+   ```
+
+4. **Set up environment variables**
    Create a `.env` file in the root directory (see [Configuration](#configuration) section)
 
-4. **Create database**
+5. **Create database**
    ```sql
    CREATE DATABASE myapp;
    ```
 
-5. **Start Redis** (optional, for caching)
+6. **Start Redis** (optional, for caching)
    ```bash
    # Using Docker
    docker run -d -p 6379:6379 redis:7-alpine
@@ -131,14 +198,22 @@ src/
    redis-server
    ```
 
-6. **Start the application**
+7. **Start the application**
    ```bash
-   # Development mode (with hot reload)
+   # Backend - Development mode (with hot reload)
    npm run dev
    
-   # Production mode
+   # Backend - Production mode
    npm run build
    npm start
+   
+   # Frontend - Development mode
+   cd frontend
+   npm start
+   
+   # Frontend - Production build
+   cd frontend
+   npm run build
    ```
 
 ## Configuration
@@ -342,6 +417,22 @@ Content-Type: application/json
 }
 ```
 
+**Response:**
+```json
+{
+  "token": "token_...",
+  "user": {
+    "id": "...",
+    "email": "john@example.com",
+    "roles": ["user", "manager"]
+  }
+}
+```
+
+**Error Handling:**
+- Returns `401 Unauthorized` with error message for invalid email or password
+- Error message: "Invalid credentials" for authentication failures
+
 #### Delete User
 ```http
 DELETE /auth/delete
@@ -350,10 +441,10 @@ Authorization: Bearer <token>
 
 ### User Endpoints
 
-#### Get All Users (Paginated)
+#### Get All Users (Paginated) - Admin Only
 ```http
 GET /user?page=1&limit=20
-Authorization: Bearer <token>
+Authorization: Bearer <admin_token>
 ```
 
 #### Get User by ID
@@ -362,10 +453,24 @@ GET /user/:id
 Authorization: Bearer <token>
 ```
 
-#### Update User
+#### Create User - Admin or Manager Only
+```http
+POST /user
+Authorization: Bearer <admin_or_manager_token>
+Content-Type: application/json
+
+{
+  "name": "New User",
+  "email": "newuser@example.com",
+  "password": "SecurePassword123!",
+  "roles": ["user"]  // Optional: array of role names
+}
+```
+
+#### Update User - Admin Only
 ```http
 PUT /user/:id
-Authorization: Bearer <token>
+Authorization: Bearer <admin_token>
 Content-Type: application/json
 
 {
@@ -374,10 +479,10 @@ Content-Type: application/json
 }
 ```
 
-#### Delete User
+#### Delete User - Admin Only
 ```http
 DELETE /user/:id
-Authorization: Bearer <token>
+Authorization: Bearer <admin_token>
 ```
 
 ### Role Management Endpoints
@@ -445,22 +550,28 @@ Authorization: Bearer <token>
 
 ### Project Endpoints
 
-#### Get All Projects (Paginated)
+#### Get All Projects (Paginated) - Any Authenticated User
 ```http
 GET /project?page=1&limit=20
 Authorization: Bearer <token>
 ```
 
-#### Get Project by ID
+#### Get Project by ID - Any Authenticated User
 ```http
 GET /project/:id
 Authorization: Bearer <token>
 ```
 
-#### Create Project
+#### Get Projects by Owner - Any Authenticated User
+```http
+GET /project/owner/:ownerId
+Authorization: Bearer <token>
+```
+
+#### Create Project - Admin or Manager Only
 ```http
 POST /project
-Authorization: Bearer <token>
+Authorization: Bearer <admin_or_manager_token>
 Content-Type: application/json
 
 {
@@ -469,10 +580,12 @@ Content-Type: application/json
 }
 ```
 
-#### Update Project
+**Note:** The `ownerId` is automatically set from the authenticated user's ID.
+
+#### Update Project - Admin or Manager Only
 ```http
 PUT /project/:id
-Authorization: Bearer <token>
+Authorization: Bearer <admin_or_manager_token>
 Content-Type: application/json
 
 {
@@ -481,10 +594,10 @@ Content-Type: application/json
 }
 ```
 
-#### Delete Project
+#### Delete Project - Admin or Manager Only
 ```http
 DELETE /project/:id
-Authorization: Bearer <token>
+Authorization: Bearer <admin_or_manager_token>
 ```
 
 ### Health Check
@@ -502,6 +615,67 @@ GET /health
     "connected": true,
     "tablesExist": true
   }
+}
+```
+
+## Role-Based Access Control (RBAC)
+
+The application implements a comprehensive RBAC system with three default roles: **admin**, **manager**, and **user**.
+
+### Default Roles
+
+- **admin**: Full access to all resources (users, roles, projects)
+- **manager**: Can create users and projects, but cannot manage roles
+- **user**: Read-only access to projects
+
+### Permission Matrix
+
+| Endpoint | Admin | Manager | User |
+|----------|-------|---------|------|
+| **Authentication** |
+| `POST /auth/register` | ✅ | ✅ | ✅ |
+| `POST /auth/login` | ✅ | ✅ | ✅ |
+| `DELETE /auth/delete` | ✅ | ✅ | ✅ |
+| **Users** |
+| `GET /user` (List) | ✅ | ❌ | ❌ |
+| `GET /user/:id` | ✅ | ✅ | ✅ (own profile) |
+| `POST /user` (Create) | ✅ | ✅ | ❌ |
+| `PUT /user/:id` (Update) | ✅ | ❌ | ❌ |
+| `DELETE /user/:id` | ✅ | ❌ | ❌ |
+| **Roles** |
+| `GET /role` (List) | ✅ | ❌ | ❌ |
+| `GET /role/:id` | ✅ | ❌ | ❌ |
+| `POST /role` (Create) | ✅ | ❌ | ❌ |
+| `PUT /role/:id` (Update) | ✅ | ❌ | ❌ |
+| `DELETE /role/:id` | ✅ | ❌ | ❌ |
+| **Projects** |
+| `GET /project` (List) | ✅ | ✅ | ✅ |
+| `GET /project/:id` | ✅ | ✅ | ✅ |
+| `GET /project/owner/:ownerId` | ✅ | ✅ | ✅ |
+| `POST /project` (Create) | ✅ | ✅ | ❌ |
+| `PUT /project/:id` (Update) | ✅ | ✅ | ❌ |
+| `DELETE /project/:id` | ✅ | ✅ | ❌ |
+| **User Roles** |
+| `POST /user/:userId/roles` | ✅ | ❌ | ❌ |
+| `GET /user/:userId/roles` | ✅ | ✅ | ✅ |
+
+### RBAC Implementation
+
+- **Middleware**: `requireAuth` - Validates JWT token and attaches user to request
+- **Middleware**: `requireRoles(...roles)` - Checks if user has any of the specified roles
+- **JWT Token**: Includes user ID, email, and roles array
+- **Error Handling**: Returns `403 Forbidden` for unauthorized access attempts
+
+### Creating Users with Roles
+
+When registering or creating a user, you can assign roles:
+
+```json
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "SecurePassword123!",
+  "roles": ["user", "manager"]  // Optional: if omitted, defaults to ["user"]
 }
 ```
 
@@ -610,6 +784,109 @@ GET /health
 - **CDN/Edge Caching** - Add reverse proxy (nginx/Varnish) with caching headers
 - **Database Partitioning** - Partition large tables by date/region
 - **Message Queues** - Implement queue system (Bull/BullMQ) for async writes
+
+## Docker Deployment
+
+### Building Docker Images
+
+```bash
+# Build backend image
+docker build -t boilerplate-backend .
+
+# Build frontend image
+docker build -t boilerplate-frontend ./frontend
+```
+
+### Docker Compose Commands
+
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f [service-name]  # e.g., backend, frontend, sqlserver, redis
+
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes (⚠️ deletes data)
+docker-compose down -v
+
+# Rebuild and restart services
+docker-compose up -d --build
+
+# Scale services (if needed)
+docker-compose up -d --scale backend=3
+```
+
+### Environment Variables for Docker
+
+The `docker-compose.yml` file includes default environment variables. To customize:
+
+1. **Create a `.env` file** in the root directory:
+   ```bash
+   # Copy example
+   cp .env.example .env
+   
+   # Edit with your values
+   nano .env
+   ```
+
+2. **Update docker-compose.yml** to use environment variables:
+   ```yaml
+   backend:
+     environment:
+       - JWT_SECRET=${JWT_SECRET}
+       - LOCAL_DB_PASSWORD=${DB_PASSWORD}
+       # ... etc
+   ```
+
+### Production Deployment
+
+For production deployment:
+
+1. **Update environment variables** in `docker-compose.yml`:
+   - Change `JWT_SECRET` to a strong random value
+   - Update `LOCAL_DB_PASSWORD` to a secure password
+   - Set `NODE_ENV=production`
+   - Configure `FRONTEND_URL` to your production domain
+
+2. **Use external database** (recommended for production):
+   ```yaml
+   backend:
+     environment:
+       - DB_PROVIDER=azure  # or use external SQL Server
+       - AZURE_DB_HOST=your-server.database.windows.net
+       # ... Azure SQL config
+   ```
+
+3. **Remove SQL Server service** from docker-compose.yml if using external database
+
+4. **Use secrets management**:
+   ```yaml
+   backend:
+     secrets:
+       - jwt_secret
+       - db_password
+   secrets:
+     jwt_secret:
+       file: ./secrets/jwt_secret.txt
+     db_password:
+       file: ./secrets/db_password.txt
+   ```
+
+### Docker Health Checks
+
+All services include health checks:
+- **Backend**: Checks `/health` endpoint
+- **Frontend**: Checks nginx response
+- **SQL Server**: Checks database connectivity
+- **Redis**: Checks `PING` command
+
+View health status:
+```bash
+docker-compose ps
+```
 
 ## Troubleshooting
 

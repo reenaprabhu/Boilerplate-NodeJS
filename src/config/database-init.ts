@@ -1,3 +1,4 @@
+import { getSequelize } from '../config/database';
 import { syncModels, testModels } from '../models/sequelize';
 import { RoleModel } from '../models/sequelize';
 import { randomUUID } from 'crypto';
@@ -30,6 +31,9 @@ export async function initializeDatabase(): Promise<void> {
     // Create default roles if they don't exist
     await ensureDefaultRoles();
     
+    // Verify and log tables so you can confirm in SSMS
+    await logCreatedTables();
+    
     console.log('Database schema initialization completed successfully');
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -46,6 +50,34 @@ export async function initializeDatabase(): Promise<void> {
     }
     
     throw error;
+  }
+}
+
+/**
+ * Log tables created in the database and how to view them in SSMS
+ */
+async function logCreatedTables(): Promise<void> {
+  const dbName = process.env.LOCAL_DB_NAME || process.env.AZURE_DB_NAME || 'myapp';
+  const port = process.env.LOCAL_DB_PORT || process.env.AZURE_DB_PORT || '1433';
+  try {
+    const sequelize = getSequelize();
+    const [tableRows] = await sequelize.query(
+      "SELECT name FROM sys.tables WHERE type = 'U' ORDER BY name"
+    ) as [Array<{ name: string }>, unknown];
+    const tableList = Array.isArray(tableRows) ? tableRows.map((r) => r.name).join(', ') : 'unknown';
+    const [serverRows] = await sequelize.query(
+      "SELECT @@SERVERNAME AS server, DB_NAME() AS db"
+    ) as [Array<{ server: string; db: string }>, unknown];
+    const serverName = Array.isArray(serverRows) && serverRows[0] ? serverRows[0].server : '?';
+    const actualDb = Array.isArray(serverRows) && serverRows[0] ? serverRows[0].db : '?';
+    console.log(`✅ Tables in database "${actualDb}" (schema dbo): ${tableList}`);
+    console.log(`   SQL Server instance name: ${serverName}`);
+    console.log(`   To see these tables in SSMS on THIS machine:`);
+    console.log(`   → Server name: localhost,${port}  or  127.0.0.1,${port}`);
+    console.log(`   → Do NOT use: .\\SQLEXPRESS  or  (local)  or  PSILENL337  without ,${port}`);
+    console.log(`   → Database: ${dbName}  →  Tables  →  dbo  →  right‑click Refresh`);
+  } catch (e) {
+    console.warn('Could not list tables:', e);
   }
 }
 

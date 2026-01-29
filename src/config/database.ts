@@ -62,6 +62,9 @@ function parseDatabaseConfig(): Options {
     database,
     username,
     password,
+    define: {
+      schema: 'dbo',
+    },
     dialectOptions: {
       options: {
       encrypt: false,                 // true ONLY for Azure SQL
@@ -81,6 +84,33 @@ function parseDatabaseConfig(): Options {
 
 // Lazy initialization of Sequelize instance
 let sequelizeInstance: Sequelize | null = null;
+
+/**
+ * Ensure the target database exists (local provider only).
+ * Connects to master and runs CREATE DATABASE if not exists.
+ */
+export async function ensureDatabaseExists(): Promise<void> {
+  const provider = process.env.DB_PROVIDER || 'local';
+  if (provider !== 'local') return;
+
+  const dbName = process.env.LOCAL_DB_NAME;
+  if (!dbName) return;
+
+  const config = parseDatabaseConfig();
+  const masterSequelize = new Sequelize({ ...config, database: 'master' });
+
+  try {
+    await masterSequelize.authenticate();
+    const literalName = dbName.replace(/'/g, "''");
+    const bracketName = '[' + dbName.replace(/\]/g, ']]') + ']';
+    await masterSequelize.query(
+      `IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = N'${literalName}') CREATE DATABASE ${bracketName}`
+    );
+    console.log(`✅ Database "${dbName}" exists or was created`);
+  } finally {
+    await masterSequelize.close();
+  }
+}
 
 /**
  * Get or create Sequelize instance (lazy initialization)

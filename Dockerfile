@@ -27,8 +27,9 @@ COPY package*.json ./
 # Install production dependencies only
 RUN npm ci --only=production
 
-# Copy built files from builder
+# Copy built files and source (source needed so Swagger can scan for API docs in Docker)
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/src ./src
 
 # Expose port
 EXPOSE 3001

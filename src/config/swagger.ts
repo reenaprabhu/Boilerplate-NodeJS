@@ -127,9 +127,10 @@ const swaggerDefinition = {
   ],
 };
 
+// Paths relative to process.cwd(). Dockerfile copies src so this works in Docker too.
 const options = {
   definition: swaggerDefinition,
-  apis: ['./src/routes/*.ts', './src/app.ts'], // Path to the API files
+  apis: ['./src/routes/*.ts'],
 };
 
 export const swaggerSpec = swaggerJsdoc(options);
